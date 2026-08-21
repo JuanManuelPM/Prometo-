@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2d2d2d"><title>Prometeo</title>
+<style>
+:root{--bg:#2d2d2d;--bg2:#242424;--paper:#eae0d2;--muted:#cbbda5;--line:#514c46;--good:#b5c8a7;--warn:#d2b57b;--bad:#c98c7b}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--paper);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:680px;margin:auto;padding:16px 14px 90px}h1{font-size:19px;letter-spacing:.1em;margin:0}.small{font-size:11px;color:var(--muted)}
+textarea,button{font:inherit}textarea{width:100%;min-height:112px;margin-top:18px;background:var(--bg2);color:var(--paper);border:1px solid var(--line);border-radius:14px;padding:13px}
+.primary{width:100%;margin-top:8px;border:0;border-radius:12px;padding:13px;background:var(--paper);color:#222;font-weight:800}
+section{margin-top:24px}h2{font-size:11px;letter-spacing:.14em;color:var(--muted);margin:0 0 8px}
+.item{border-top:1px solid var(--line);padding:11px 0}.title{font-size:14px;font-weight:750}.meta,.body{font-size:12px;color:var(--muted);line-height:1.4;margin-top:4px}
+.row{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.signal{border:1px solid var(--line);background:transparent;color:var(--paper);border-radius:10px;padding:8px 11px}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn);margin-right:7px}.good{background:var(--good)}.bad{background:var(--bad)}.empty{font-size:12px;color:#91877b;padding:8px 0}
+#toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:#151515;padding:10px 13px;border-radius:10px;display:none}
+</style></head><body><main>
+<header><h1>PROMETEO</h1><div id="status" class="small">conectando…</div></header>
+<form id="composer"><textarea id="input" placeholder="¿Qué querés que haga Prometeo?"></textarea><button class="primary">ENVIAR</button></form>
+<section><h2>CAMPAÑA</h2><div id="campaign"></div></section>
+<section><h2>NEWS PULSE</h2><div id="news"></div></section>
+<section><h2>ÚLTIMOS RUNS</h2><div id="runs"></div></section>
+<section><h2>TUS INPUTS</h2><div id="inputs"></div></section>
+<section><h2>SEÑAL</h2><div class="row">
+<button class="signal" data-s="ADOPT">★</button><button class="signal" data-s="IMPROVE">↻</button>
+<button class="signal" data-s="INVESTIGATE">?</button><button class="signal" data-s="REJECT">×</button><button class="signal" data-s="ACCEPT">✓</button>
+</div></section>
+</main><div id="toast"></div>
+<script>
+const API="https://script.google.com/macros/s/AKfycbwK52lh-Fb8Hm3wjzusp49f-o3ntd-scCbDGyU5aeRA1O4VzVZt6EE3n0FJQeFES6yn/exec";
+let state=null;
+function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function toast(m){let e=document.getElementById('toast');e.textContent=m;e.style.display='block';setTimeout(()=>e.style.display='none',1600)}
+function jsonp(params){return new Promise((resolve,reject)=>{
+ const cb='__p'+Date.now()+Math.random().toString(36).slice(2),sc=document.createElement('script');
+ const t=setTimeout(()=>{cleanup();reject(new Error('timeout'))},12000);
+ function cleanup(){clearTimeout(t);delete window[cb];sc.remove()}
+ window[cb]=d=>{cleanup();resolve(d)};
+ const q=new URLSearchParams({...params,callback:cb,ts:Date.now()});sc.src=API+'?'+q;sc.onerror=()=>{cleanup();reject(new Error('network'))};document.body.appendChild(sc);
+})}
+async function refresh(){
+ try{state=await jsonp({action:'state'});render();document.getElementById('status').textContent='online · '+new Date().toLocaleTimeString([] ,{hour:'2-digit',minute:'2-digit'})}
+ catch(e){document.getElementById('status').textContent='error de conexión'}
+}
+function render(){
+ const c=state.campaign||{}, news=state.news_events||[], runs=state.runs||[], inputs=state.human_inputs||[];
+ document.getElementById('campaign').innerHTML=`<div class="item"><div class="title"><span class="dot good"></span>${esc(c.campaign_id||'')}</div><div class="meta">${esc(c.status||'')} · next: ${esc(c.exact_next||'')}</div><div class="body">último sano: ${esc(c.last_good_run_id||'—')} · state v${esc(state.state_version||'?')}</div></div>`;
+ document.getElementById('news').innerHTML=news.length?news.slice().reverse().slice(0,12).map(n=>`<div class="item"><div class="title">${esc(n.headline||n.title||'Novedad')}</div><div class="meta">${esc(n.source||'')} ${n.published_at?'· '+esc(n.published_at):''}</div><div class="body">${esc(n.summary||'')}${n.why_it_matters?' · '+esc(n.why_it_matters):''}</div></div>`).join(''):'<div class="empty">Todavía no hay noticias procesadas.</div>';
+ document.getElementById('runs').innerHTML=runs.length?runs.slice().reverse().slice(0,8).map(r=>`<div class="item"><div class="title"><span class="dot ${r.status==='FAILED_SAFE'?'bad':'good'}"></span>${esc(r.status||'RUN')}</div><div class="meta">${esc(r.started_at||'')} → ${esc(r.finished_at||'')}</div><div class="body">${esc(r.summary||'')}</div></div>`).join(''):'<div class="empty">Todavía no hay runs.</div>';
+ document.getElementById('inputs').innerHTML=inputs.length?inputs.slice().reverse().slice(0,8).map(i=>`<div class="item"><div class="body">${esc(i.text||'')}</div><div class="meta">${esc(i.status||'')} · ${esc(i.created_at||'')}</div></div>`).join(''):'<div class="empty">Todavía no enviaste nada.</div>';
+}
+document.getElementById('composer').onsubmit=async e=>{e.preventDefault();let b=document.getElementById('input'),t=b.value.trim();if(!t)return;try{await jsonp({action:'input',text:t});b.value='';toast('✓ guardado');refresh()}catch{toast('falló')}}
+document.body.onclick=async e=>{let b=e.target.closest('[data-s]');if(!b)return;try{await jsonp({action:'signal',target_id:(state?.campaign?.campaign_id||''),signal:b.dataset.s});toast('✓ señal');refresh()}catch{toast('falló')}}
+refresh();setInterval(refresh,15000);
+</script></body></html>
