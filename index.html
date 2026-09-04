@@ -51,4 +51,5 @@ function render(){
 document.getElementById('composer').onsubmit=async e=>{e.preventDefault();let b=document.getElementById('input'),t=b.value.trim();if(!t)return;try{await jsonp({action:'input',text:t});b.value='';toast('✓ guardado');refresh()}catch{toast('falló')}}
 document.body.onclick=async e=>{let b=e.target.closest('[data-s]');if(!b)return;try{await jsonp({action:'signal',target_id:(state?.campaign?.campaign_id||''),signal:b.dataset.s});toast('✓ señal');refresh()}catch{toast('falló')}}
 refresh();setInterval(refresh,15000);
-</script></body></html>
+</script><script type="module" src="/prometeo/shared/prometeo-shell/v1/prometeo-shell.js?v=1" data-prometeo-shell></script>
+</body></html>
